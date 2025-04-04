@@ -7,6 +7,7 @@ import io.github.yunivers.tconstruct.util.FluidStack;
 import net.minecraft.block.Block;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.material.FluidMaterial;
+import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.block.BlockRenderManager;
 import net.minecraft.client.render.block.entity.BlockEntityRenderer;
 import net.minecraft.client.util.GlAllocationUtils;
@@ -67,12 +68,8 @@ public class TankRenderer extends BlockEntityRenderer
     public void renderFluid(Block block, LavaTankEntity entity, BlockView blockView, double x, double y, double z, float height)
     {
         GL11.glPushMatrix();
-
-        GL11.glDisable(GL11.GL_CULL_FACE);
         GL11.glTranslated(x, y, z);
-        GL11.glEnable(GL11.GL_ALPHA_TEST);
-        GL11.glEnable(32826);
-
+        GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
         LogGLError("renderFluid:1");
 
         if (!this.compiled)
@@ -81,9 +78,7 @@ public class TankRenderer extends BlockEntityRenderer
             GL11.glCallList(this.list);
 
         LogGLError("renderFluid:2");
-
-        GL11.glDisable(32826);
-        GL11.glEnable(GL11.GL_CULL_FACE);
+        GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
         GL11.glPopMatrix();
     }
 
@@ -103,6 +98,8 @@ public class TankRenderer extends BlockEntityRenderer
 
         LogGLError("compileList:1");
 
+        Tessellator t = Tessellator.INSTANCE;
+        t.startQuads();
         int colorMultiplier = block.getColorMultiplier(blockView, entity.x, entity.y, entity.z);
         float r = ((colorMultiplier >> 16) & 255) / 255.0F;
         float g = ((colorMultiplier >> 8) & 255) / 255.0F;
@@ -128,27 +125,14 @@ public class TankRenderer extends BlockEntityRenderer
         float light = block.getLuminance(blockView, entity.x, entity.y, entity.z);
         LogGLError("compileList:2");
 
-        GL11.glPushMatrix();
-        GL11.glColor3f(brightnessTop * light * r, brightnessTop * light * g, brightnessTop * light * b);
-        GL11.glBegin(GL11.GL_QUADS);
+        //t.color(brightnessTop * light * r, brightnessTop * light * g, brightnessTop * light * b);
+        t.color(1, 0, 0);
+        t.vertex(0, height, 0, uMax - cos0 - sin0, vMax - cos0 + sin0);
+        t.vertex(0, height, 1, uMax - cos0 + sin0, vMax + cos0 + sin0);
+        t.vertex(1, height, 1, uMax + cos0 + sin0, vMax + cos0 - sin0);
+        t.vertex(1, height, 0, uMax + cos0 - sin0, vMax - cos0 - sin0);
 
         LogGLError("compileList:3");
-
-        GL11.glTexCoord2d(uMax - cos0 - sin0, vMax - cos0 + sin0);
-        GL11.glVertex3d(0, height, 0);
-        GL11.glTexCoord2d(uMax - cos0 + sin0, vMax + cos0 + sin0);
-        GL11.glVertex3d(0, height, 1);
-        GL11.glTexCoord2d(uMax + cos0 + sin0, vMax + cos0 - sin0);
-        GL11.glVertex3d(1, height, 1);
-        GL11.glTexCoord2d(uMax + cos0 - sin0, vMax - cos0 - sin0);
-        GL11.glVertex3d(1, height, 0);
-
-        LogGLError("compileList:4");
-
-        GL11.glEnd();
-        GL11.glPopMatrix();
-
-        LogGLError("compileList:5");
 
         for (int side = 0; side < 4; ++side) {
             int nx = entity.x + (side == 3 ? 1 : side == 2 ? -1 : 0);
@@ -190,31 +174,20 @@ public class TankRenderer extends BlockEntityRenderer
             float sideLuminance = block.getLuminance(blockView, nx, entity.y, nz);
             float sideBrightness = (side < 2 ? brightnessNorthSouth : brightnessEastWest) * sideLuminance;
 
+            //t.color(brightnessTop * sideBrightness * r, brightnessTop * sideBrightness * g, brightnessTop * sideBrightness * b);
+            t.color(1, 0, 0);
+            t.vertex(x1, height, z1, u0, v0);
+            t.vertex(x2, height, z2, u1, v1);
+            t.vertex(x2, 0, z2, u1, v2);
+            t.vertex(x1, 0, z1, u0, v2);
 
-            GL11.glPushMatrix();
-            GL11.glDisable(GL11.GL_CULL_FACE);
-            GL11.glBegin(GL11.GL_QUADS);
-
-            GL11.glColor3f(brightnessTop * sideBrightness * r, brightnessTop * sideBrightness * g, brightnessTop * sideBrightness * b);
-
-            GL11.glTexCoord2d(u0, v0);
-            GL11.glVertex3d(x1, height, z1);
-            GL11.glTexCoord2d(u1, v1);
-            GL11.glVertex3d(x2, height, z2);
-            GL11.glTexCoord2d(u1, v2);
-            GL11.glVertex3d(x2, 0, z2);
-            GL11.glTexCoord2d(u0, v2);
-            GL11.glVertex3d(x1, 0, z1);
-
-            GL11.glEnd();
-            GL11.glPopMatrix();
+            LogGLError("compileList:" + (4 + side));
         }
-
-        LogGLError("compileList:6");
 
         block.minY = 0.0F;
         block.maxY = 1.0F;
 
+        t.draw();
         GL11.glEndList();
         this.compiled = true;
     }
