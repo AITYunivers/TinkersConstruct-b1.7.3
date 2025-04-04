@@ -10,19 +10,21 @@ import net.minecraft.block.material.FluidMaterial;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.block.BlockRenderManager;
 import net.minecraft.client.render.block.entity.BlockEntityRenderer;
+import net.minecraft.client.texture.TextureManager;
 import net.minecraft.client.util.GlAllocationUtils;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.BlockView;
+import net.modificationstation.stationapi.api.client.StationRenderAPI;
+import net.modificationstation.stationapi.api.client.texture.atlas.Atlas;
+import net.modificationstation.stationapi.api.client.texture.atlas.Atlases;
+import net.modificationstation.stationapi.api.client.texture.atlas.ExpandableAtlas;
 import net.modificationstation.stationapi.mixin.render.client.BlockRenderManagerAccessor;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.util.glu.GLU;
 
-import static org.lwjgl.opengl.GL11.*;
-
 public class TankRenderer extends BlockEntityRenderer
 {
-    // This will be applied to the renderer once it actually works
-    public static final float FLUID_INSET = 0.005f;
+    public static final double FLUID_INSET = 0.005d;
     private boolean compiled;
     private int list;
     private float oldAmount;
@@ -31,11 +33,18 @@ public class TankRenderer extends BlockEntityRenderer
     public void render(BlockEntity blockEntity, double x, double y, double z, float tickDelta) {
         if (blockEntity instanceof LavaTankEntity te)
         {
-            if(te.containsFluid()) {
+            if(te.containsFluid())
+            {
                 FluidStack liquid = te.tank.getFluid();
 
-                float height = ((float)liquid.amount - te.renderOffset) / (float)te.tank.getCapacity();
-                if (oldAmount != te.renderOffset) {
+                float height = (float)liquid.amount / (float)te.tank.getCapacity();
+                if (oldAmount != liquid.amount) {
+                    compiled = false;
+                    oldAmount = liquid.amount;
+                }
+
+                // Tweening looked non-beta, also had bugs so
+                /*if (oldAmount != te.renderOffset) {
                     compiled = false;
                     oldAmount = te.renderOffset;
                 }
@@ -45,7 +54,7 @@ public class TankRenderer extends BlockEntityRenderer
                 }
                 else {
                     te.renderOffset = 0;
-                }
+                }*/
 
                 BlockRenderManager brm = ((WorldRendererAccessor)MinecraftAccessor.getInstance().worldRenderer).getBlockRenderManager();
                 RenderFluid(brm, te, x, y, z, height);
@@ -58,11 +67,10 @@ public class TankRenderer extends BlockEntityRenderer
         FluidMaterial fluidType = tank.tank.getFluid().fluidType;
         Block block = null;
         if (fluidType == FluidMaterial.WATER)
-            block = Block.FLOWING_WATER;
+            block = Block.WATER;
         else if (fluidType == FluidMaterial.LAVA)
-            block = Block.FLOWING_LAVA;
+            block = Block.LAVA;
 
-        // Using +2 for debugging
         if (block != null)
             renderFluid(block, tank, ((BlockRenderManagerAccessor)renderer).getBlockView(), x, y, z, height);
     }
@@ -71,14 +79,13 @@ public class TankRenderer extends BlockEntityRenderer
     {
         GL11.glPushMatrix();
         GL11.glTranslated(x, y, z);
-//        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         LogGLError("renderFluid:1");
 
-        compileList(block, entity, blockView, x, y, z, height);
+        if (!compiled)
+            compileList(block, entity, blockView, x, y, z, height);
         GL11.glCallList(this.list);
 
         LogGLError("renderFluid:2");
-//        glPolygonMode(GL_FRONT_AND_BACK, GL11.GL_FILL);
         GL11.glPopMatrix();
     }
 
@@ -95,6 +102,7 @@ public class TankRenderer extends BlockEntityRenderer
     private void compileList(Block block, LavaTankEntity entity, BlockView blockView, double x, double y, double z, float height) {
         this.list = GlAllocationUtils.generateDisplayLists(1);
         GL11.glNewList(this.list, GL11.GL_COMPILE);
+        GL11.glEnable(GL11.GL_TEXTURE_2D);
 
         LogGLError("compileList:1");
 
@@ -109,28 +117,25 @@ public class TankRenderer extends BlockEntityRenderer
 
         int meta = blockView.getBlockMeta(entity.x, entity.y, entity.z);
         int texture = block.getTexture(1, meta);
-        int u = (texture & 15) << 4;
-        int v = texture & 240;
 
-        double uMid = (u + 8) / 256.0;
-        double vMid = (v + 8) / 256.0;
-        double uMax = (u + 16) / 256.0;
-        double vMax = (v + 16) / 256.0;
-
-        float sin0 = MathHelper.sin(0) * 8.0F / 256.0F;
-        float cos0 = MathHelper.cos(0) * 8.0F / 256.0F;
+        double size = 1d - FLUID_INSET;
+        height -= (float) FLUID_INSET;
 
         float light = block.getLuminance(blockView, entity.x, entity.y, entity.z);
         LogGLError("compileList:2");
 
-        MinecraftAccessor.getInstance().textureManager.bindTexture(texture);
+        StationRenderAPI.getBakedModelManager().getAtlas(Atlases.GAME_ATLAS_TEXTURE).bindTexture();
+
+        ExpandableAtlas atlas = Atlases.getTerrain();
+        Atlas.Sprite sprite = atlas.getTexture(texture);
+
         Tessellator t = Tessellator.INSTANCE;
         t.startQuads();
         t.color(brightnessTop * light * r, brightnessTop * light * g, brightnessTop * light * b);
-        t.vertex(0, height, 0, uMax - cos0 - sin0, vMax - cos0 + sin0);
-        t.vertex(0, height, 1, uMax - cos0 + sin0, vMax + cos0 + sin0);
-        t.vertex(1, height, 1, uMax + cos0 + sin0, vMax + cos0 - sin0);
-        t.vertex(1, height, 0, uMax + cos0 - sin0, vMax - cos0 - sin0);
+        t.vertex(FLUID_INSET, height, FLUID_INSET, sprite.getEndU(),   sprite.getEndV());
+        t.vertex(FLUID_INSET, height, size,        sprite.getEndU(),   sprite.getStartV());
+        t.vertex(size,        height, size,        sprite.getStartU(), sprite.getStartV());
+        t.vertex(size,        height, FLUID_INSET, sprite.getStartU(), sprite.getEndV());
 
         LogGLError("compileList:3");
 
@@ -144,41 +149,47 @@ public class TankRenderer extends BlockEntityRenderer
 
             double x1, x2, z1, z2;
             if (side == 0) {
-                x1 = 0;
-                x2 = 1;
-                z1 = 0;
-                z2 = 0;
+                x1 = FLUID_INSET;
+                x2 = size;
+                z1 = FLUID_INSET;
+                z2 = FLUID_INSET;
             } else if (side == 1) {
-                x1 = 1;
-                x2 = 0;
-                z1 = 1;
-                z2 = 1;
+                x1 = size;
+                x2 = FLUID_INSET;
+                z1 = size;
+                z2 = size;
             } else if (side == 2) {
-                x1 = 0;
-                x2 = 0;
-                z1 = 1;
-                z2 = 0;
+                x1 = FLUID_INSET;
+                x2 = FLUID_INSET;
+                z1 = size;
+                z2 = FLUID_INSET;
             } else {
-                x1 = 1;
-                x2 = 1;
-                z1 = 0;
-                z2 = 1;
+                x1 = size;
+                x2 = size;
+                z1 = FLUID_INSET;
+                z2 = size;
             }
-
-            double u0 = su / 256.0;
-            double u1 = (su + 16 - 0.01) / 256.0;
-            double v0 = (sv + (1.0F - height) * 16.0F) / 256.0;
-            double v1 = (sv + (1.0F - height) * 16.0F) / 256.0;
-            double v2 = (sv + 16 - 0.01) / 256.0;
 
             float sideLuminance = block.getLuminance(blockView, nx, entity.y, nz);
             float sideBrightness = (side < 2 ? brightnessNorthSouth : brightnessEastWest) * sideLuminance;
 
+            Atlas.Sprite sideSprite = atlas.getTexture(sideTexture);
+            int imgWidth = sideSprite.getWidth();
+            int imgHeight = sideSprite.getHeight();
+            double widthScale = imgWidth / 16d;
+            double heightScale = imgHeight / 16d;
+
+            double u1 = sideSprite.getStartU();
+            double u2 = sideSprite.getEndU() / widthScale;
+            double v1 = sideSprite.getStartV();
+            double v2 = sideSprite.getEndV() / heightScale;
+            v2 = v1 + (v2 - v1) * height;
+
             t.color(brightnessTop * sideBrightness * r, brightnessTop * sideBrightness * g, brightnessTop * sideBrightness * b);
-            t.vertex(x1, height, z1, u0, v0);
-            t.vertex(x2, height, z2, u1, v1);
-            t.vertex(x2, 0, z2, u1, v2);
-            t.vertex(x1, 0, z1, u0, v2);
+            t.vertex(x1, height,      z1, u1, v1);
+            t.vertex(x2, height,      z2, u2, v1);
+            t.vertex(x2, FLUID_INSET, z2, u2, v2);
+            t.vertex(x1, FLUID_INSET, z1, u1, v2);
 
             LogGLError("compileList:" + (4 + side));
         }

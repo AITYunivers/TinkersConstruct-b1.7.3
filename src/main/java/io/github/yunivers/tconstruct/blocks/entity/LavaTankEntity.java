@@ -89,7 +89,7 @@ public class LavaTankEntity extends MultiServantEntity
         tags.putBoolean("hasFluid", liquid != null);
         if (liquid != null)
         {
-            tags.putString("itemID", liquid.getFluidName());
+            tags.putString("fluidName", liquid.getFluidName());
             tags.putInt("amount", liquid.amount);
         }
     }
