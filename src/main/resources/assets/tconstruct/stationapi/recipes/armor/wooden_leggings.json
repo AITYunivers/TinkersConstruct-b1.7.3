@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "bbb",
+    "b b",
+    "b b"
+  ],
+  "key": {
+    "b": {
+      "tag": "minecraft:logs"
+    }
+  },
+  "result": {
+    "item": "tconstruct:wooden_leggings",
+    "count": 1
+  }
+}

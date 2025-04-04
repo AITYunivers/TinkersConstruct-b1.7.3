@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "b b",
+    "bbb",
+    "bbb"
+  ],
+  "key": {
+    "b": {
+      "tag": "minecraft:logs"
+    }
+  },
+  "result": {
+    "item": "tconstruct:wooden_chestplate",
+    "count": 1
+  }
+}

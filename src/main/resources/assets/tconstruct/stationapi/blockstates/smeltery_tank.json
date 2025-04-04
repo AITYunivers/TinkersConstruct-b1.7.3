@@ -1,0 +1,18 @@
+{
+  "multipart": [
+    {
+      "apply": {
+        "model": "tconstruct:block/smeltery/tank"
+      }
+    },
+    {
+      "apply": {
+        "model": "tconstruct:block/smeltery/tank_knob",
+        "uvlock": true
+      },
+      "when": {
+        "has_knob": true
+      }
+    }
+  ]
+}

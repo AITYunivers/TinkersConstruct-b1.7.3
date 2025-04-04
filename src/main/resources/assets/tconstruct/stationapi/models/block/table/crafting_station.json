@@ -1,0 +1,9 @@
+{
+  "parent": "tconstruct:block/table/table",
+  "textures": {
+    "particle": "tconstruct:block/table/crafting_station_top",
+    "top": "tconstruct:block/table/crafting_station_top",
+    "side": "tconstruct:block/table/crafting_station_side",
+    "bottom": "tconstruct:block/table/bottom"
+  }
+}

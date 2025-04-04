@@ -1,0 +1,21 @@
+{
+    "parent": "block/block",
+    "textures": {
+        "top": "tconstruct:block/smeltery/lava_tank_top",
+        "side": "tconstruct:block/smeltery/lava_tank_side",
+        "particle": "#side"
+    },
+    "elements": [
+        {   
+            "from": [ 3, 16, 3 ],
+            "to": [ 13, 17, 13 ],
+            "faces": {
+                "up":  { "texture": "#top" },
+                "north": { "texture": "#side" },
+                "south": { "texture": "#side" },
+                "west":  { "texture": "#side" },
+                "east":  { "texture": "#side" }
+            }
+        }
+    ]
+}

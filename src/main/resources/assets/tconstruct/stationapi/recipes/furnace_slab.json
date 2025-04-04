@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "bbb",
+    "b b",
+    "bbb"
+  ],
+  "key": {
+    "b": {
+      "item": "minecraft:slab",
+      "damage": 3
+    }
+  },
+  "result": {
+    "item": "tconstruct:furnace_slab",
+    "count": 1
+  }
+}

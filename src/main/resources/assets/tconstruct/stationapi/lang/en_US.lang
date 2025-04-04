@@ -1,1 +1,12 @@
 # @ is a shorthand for the current mod id, which is tconstruct. E.g: tile.@.redclay.name
+tile.tconstruct.seared_bricks.name=Seared Bricks
+tile.tconstruct.crafting_station.name=Crafting Station
+tile.tconstruct.crafting_slab.name=Crafting Station
+tile.tconstruct.furnace_slab.name=Slab Furnace
+tile.tconstruct.smeltery_controller.name=Smeltery Controller
+tile.tconstruct.smeltery_tank.name=Seared Tank
+item.tconstruct.seared_brick.name=Seared Brick
+item.tconstruct.wooden_helmet.name=Wooden Helmet
+item.tconstruct.wooden_chestplate.name=Wooden Chestplate
+item.tconstruct.wooden_leggings.name=Wooden Leggings
+item.tconstruct.wooden_boots.name=Wooden Boots
