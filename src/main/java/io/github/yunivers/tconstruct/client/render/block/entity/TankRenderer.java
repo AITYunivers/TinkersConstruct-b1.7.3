@@ -17,6 +17,8 @@ import net.modificationstation.stationapi.mixin.render.client.BlockRenderManager
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.util.glu.GLU;
 
+import static org.lwjgl.opengl.GL11.*;
+
 public class TankRenderer extends BlockEntityRenderer
 {
     // This will be applied to the renderer once it actually works
@@ -62,23 +64,21 @@ public class TankRenderer extends BlockEntityRenderer
 
         // Using +2 for debugging
         if (block != null)
-            renderFluid(block, tank, ((BlockRenderManagerAccessor)renderer).getBlockView(), x, y + 2, z, height);
+            renderFluid(block, tank, ((BlockRenderManagerAccessor)renderer).getBlockView(), x, y, z, height);
     }
 
     public void renderFluid(Block block, LavaTankEntity entity, BlockView blockView, double x, double y, double z, float height)
     {
         GL11.glPushMatrix();
         GL11.glTranslated(x, y, z);
-        GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
+//        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         LogGLError("renderFluid:1");
 
-        if (!this.compiled)
-            compileList(block, entity, blockView, x, y, z, height);
-        else
-            GL11.glCallList(this.list);
+        compileList(block, entity, blockView, x, y, z, height);
+        GL11.glCallList(this.list);
 
         LogGLError("renderFluid:2");
-        GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
+//        glPolygonMode(GL_FRONT_AND_BACK, GL11.GL_FILL);
         GL11.glPopMatrix();
     }
 
@@ -98,8 +98,6 @@ public class TankRenderer extends BlockEntityRenderer
 
         LogGLError("compileList:1");
 
-        Tessellator t = Tessellator.INSTANCE;
-        t.startQuads();
         int colorMultiplier = block.getColorMultiplier(blockView, entity.x, entity.y, entity.z);
         float r = ((colorMultiplier >> 16) & 255) / 255.0F;
         float g = ((colorMultiplier >> 8) & 255) / 255.0F;
@@ -125,8 +123,10 @@ public class TankRenderer extends BlockEntityRenderer
         float light = block.getLuminance(blockView, entity.x, entity.y, entity.z);
         LogGLError("compileList:2");
 
-        //t.color(brightnessTop * light * r, brightnessTop * light * g, brightnessTop * light * b);
-        t.color(1, 0, 0);
+        MinecraftAccessor.getInstance().textureManager.bindTexture(texture);
+        Tessellator t = Tessellator.INSTANCE;
+        t.startQuads();
+        t.color(brightnessTop * light * r, brightnessTop * light * g, brightnessTop * light * b);
         t.vertex(0, height, 0, uMax - cos0 - sin0, vMax - cos0 + sin0);
         t.vertex(0, height, 1, uMax - cos0 + sin0, vMax + cos0 + sin0);
         t.vertex(1, height, 1, uMax + cos0 + sin0, vMax + cos0 - sin0);
@@ -174,8 +174,7 @@ public class TankRenderer extends BlockEntityRenderer
             float sideLuminance = block.getLuminance(blockView, nx, entity.y, nz);
             float sideBrightness = (side < 2 ? brightnessNorthSouth : brightnessEastWest) * sideLuminance;
 
-            //t.color(brightnessTop * sideBrightness * r, brightnessTop * sideBrightness * g, brightnessTop * sideBrightness * b);
-            t.color(1, 0, 0);
+            t.color(brightnessTop * sideBrightness * r, brightnessTop * sideBrightness * g, brightnessTop * sideBrightness * b);
             t.vertex(x1, height, z1, u0, v0);
             t.vertex(x2, height, z2, u1, v1);
             t.vertex(x2, 0, z2, u1, v2);
