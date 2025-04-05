@@ -1,5 +1,6 @@
 package io.github.yunivers.tconstruct.blocks.smeltery;
 
+import io.github.yunivers.tconstruct.blocks.entity.CraftingStationEntity;
 import io.github.yunivers.tconstruct.blocks.entity.SmelteryEntity;
 import io.github.yunivers.tconstruct.events.init.InitListener;
 import io.github.yunivers.tconstruct.mixin.MinecraftAccessor;
@@ -16,6 +17,7 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.BlockView;
 import net.minecraft.world.World;
 import net.modificationstation.stationapi.api.block.BlockState;
+import net.modificationstation.stationapi.api.gui.screen.container.GuiHelper;
 import net.modificationstation.stationapi.api.state.StateManager;
 import net.modificationstation.stationapi.api.state.property.EnumProperty;
 import net.modificationstation.stationapi.api.state.property.IntProperty;
@@ -31,6 +33,8 @@ public class SmelteryController extends TemplateBlockWithEntity implements ISmel
     public static final EnumProperty<Direction> FACING_PROPERTY = EnumProperty.of("facing", Direction.class);
     public static final IntProperty LUMINANCE_PROPERTY = IntProperty.of("luminance", 0, 15);
     public static final BooleanProperty ACTIVE_PROPERTY = BooleanProperty.of("active");
+    public static final IntProperty LAYERS_PROPERTY = IntProperty.of("layers", 0, 128); // I think 128 is the build height?
+    public static boolean UpdatingBlockState; // No use yet but will get one soon enough
 
     public SmelteryController(Identifier identifier) {
         super(identifier, Material.STONE);
@@ -41,6 +45,7 @@ public class SmelteryController extends TemplateBlockWithEntity implements ISmel
         setDefaultState(getStateManager().getDefaultState().with(LUMINANCE_PROPERTY, 0));
         setDefaultState(getStateManager().getDefaultState().with(FACING_PROPERTY, Direction.NORTH));
         setDefaultState(getStateManager().getDefaultState().with(ACTIVE_PROPERTY, false));
+        setDefaultState(getStateManager().getDefaultState().with(LAYERS_PROPERTY, 0));
         setLuminance((blockState) -> blockState.get(LUMINANCE_PROPERTY));
     }
 
@@ -50,11 +55,22 @@ public class SmelteryController extends TemplateBlockWithEntity implements ISmel
         builder.add(LUMINANCE_PROPERTY);
         builder.add(FACING_PROPERTY);
         builder.add(ACTIVE_PROPERTY);
+        builder.add(LAYERS_PROPERTY);
     }
 
     @Override
-    protected BlockEntity createBlockEntity() {
+    protected BlockEntity createBlockEntity()
+    {
         return new SmelteryEntity();
+    }
+
+    public void updateBlockState(World world, int x, int y, int z, BlockState newState) {
+        BlockEntity entity = world.getBlockEntity(x, y, z);
+        UpdatingBlockState = true;
+        world.setBlockState(x, y, z, newState);
+        UpdatingBlockState = false;
+        entity.cancelRemoval();
+        world.setBlockEntity(x, y, z, entity);
     }
 
     @Override
@@ -97,10 +113,22 @@ public class SmelteryController extends TemplateBlockWithEntity implements ISmel
     }
 
     @Override
+    public boolean onUse(World world, int x, int y, int z, PlayerEntity player) {
+        if (!world.isRemote) {
+            InitListener.TempGuiX = x;
+            InitListener.TempGuiY = y;
+            InitListener.TempGuiZ = z;
+
+            SmelteryEntity logic = (SmelteryEntity) world.getBlockEntity(x, y, z);
+            GuiHelper.openGUI(player, Identifier.of("tconstruct:openSmeltery"), logic, logic.getGuiContainer(player.inventory, world, x, y, z));
+        }
+        return true;
+    }
+
+    @Override
     public void onPlaced(World world, int x, int y, int z, LivingEntity placer) {
-        BlockEntity logic = world.getBlockEntity(x, y, z);
         int facing = MathHelper.floor((double)(placer.yaw * 4.0F / 360.0F) + (double)0.5F) & 3;
-        world.setBlockState(x, y, z, getDefaultState().with(FACING_PROPERTY,
+        updateBlockState(world, x, y, z, getDefaultState().with(FACING_PROPERTY,
                 switch(facing) {
                     case 0 -> Direction.NORTH;
                     case 1 -> Direction.EAST;

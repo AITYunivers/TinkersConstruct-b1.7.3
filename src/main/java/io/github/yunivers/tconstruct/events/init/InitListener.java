@@ -10,8 +10,9 @@ import io.github.yunivers.tconstruct.blocks.smeltery.GenericSmelteryBlock;
 import io.github.yunivers.tconstruct.blocks.smeltery.LavaTankBlock;
 import io.github.yunivers.tconstruct.blocks.smeltery.MultiServantEntity;
 import io.github.yunivers.tconstruct.blocks.smeltery.SmelteryController;
+import io.github.yunivers.tconstruct.client.gui.SmelteryControllerScreen;
 import io.github.yunivers.tconstruct.client.render.block.entity.TankRenderer;
-import io.github.yunivers.tconstruct.gui.CraftingStationScreen;
+import io.github.yunivers.tconstruct.client.gui.CraftingStationScreen;
 import io.github.yunivers.tconstruct.item.armor.WoodenArmorItem;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -136,6 +137,7 @@ public class InitListener {
     public void registerScreenHandlers(GuiHandlerRegistryEvent event) {
         GuiHandlerRegistry registry = event.registry;
         Registry.register(registry, Identifier.of(NAMESPACE, "openCraftingStation"), new GuiHandler((GuiHandler.ScreenFactoryNoMessage) this::openCraftingStation, CraftingStationEntity::new));
+        Registry.register(registry, Identifier.of(NAMESPACE, "openSmeltery"), new GuiHandler((GuiHandler.ScreenFactoryNoMessage) this::openSmeltery, SmelteryEntity::new));
     }
 
     public static int TempGuiX;
@@ -145,6 +147,11 @@ public class InitListener {
     @Environment(EnvType.CLIENT)
     public Screen openCraftingStation(PlayerEntity player, Inventory inventoryBase) {
         return new CraftingStationScreen(player.inventory, (CraftingStationEntity)inventoryBase, TempGuiX, TempGuiY, TempGuiZ);
+    }
+
+    @Environment(EnvType.CLIENT)
+    public Screen openSmeltery(PlayerEntity player, Inventory inventoryBase) {
+        return new SmelteryControllerScreen(player.inventory, (SmelteryEntity)inventoryBase, player.world, TempGuiX, TempGuiY, TempGuiZ);
     }
 
     // Textures

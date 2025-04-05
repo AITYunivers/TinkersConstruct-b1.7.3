@@ -1,4 +1,4 @@
-package io.github.yunivers.tconstruct.gui;
+package io.github.yunivers.tconstruct.client.gui;
 
 import io.github.yunivers.tconstruct.blocks.entity.CraftingStationEntity;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;

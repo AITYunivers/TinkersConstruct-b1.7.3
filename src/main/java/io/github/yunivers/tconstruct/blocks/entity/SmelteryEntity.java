@@ -2,16 +2,21 @@ package io.github.yunivers.tconstruct.blocks.entity;
 
 import io.github.yunivers.tconstruct.blocks.smeltery.*;
 import io.github.yunivers.tconstruct.events.init.InitListener;
+import io.github.yunivers.tconstruct.inventory.SmelteryHandler;
 import io.github.yunivers.tconstruct.mixin.MinecraftAccessor;
 import io.github.yunivers.tconstruct.util.CoordTuple;
 import io.github.yunivers.tconstruct.util.FluidStack;
 import net.minecraft.block.Block;
 import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.block.material.Material;
 import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtList;
+import net.minecraft.screen.ScreenHandler;
 import net.minecraft.world.World;
 import net.modificationstation.stationapi.api.block.BlockState;
 import net.modificationstation.stationapi.api.util.math.Direction;
@@ -26,6 +31,9 @@ public class SmelteryEntity extends BlockEntity implements Inventory, IMasterEnt
     public boolean tempValidStructure;
     byte direction;
     int internalTemp;
+    public int useTime;
+    public int fuelGague;
+    public int fuelAmount;
 
     ArrayList<CoordTuple> lavaTanks;
     CoordTuple activeLavaTank;
@@ -34,62 +42,52 @@ public class SmelteryEntity extends BlockEntity implements Inventory, IMasterEnt
     public int[] activeTemps;
     public int[] meltingTemps;
 
+    public ArrayList<FluidStack> moltenMetal = new ArrayList<FluidStack>();
     int maxLiquid;
-    public int layers;
+    int currentLiquid;
 
     int numBricks;
 
     Random rand = new Random();
     boolean needsUpdate;
 
+    private static int nextID = 0;
+    public int ID;
+
     public SmelteryEntity() {
         lavaTanks = new ArrayList<CoordTuple>();
         activeTemps = new int[0];
         meltingTemps = new int[0];
         inventory = new ItemStack[0];
+
+        ID = nextID++;
     }
 
-    @Override
-    public int size() {
-        return 0;
+    public int getLayers() {
+        World world = MinecraftAccessor.getInstance().world;
+        BlockState state = world.getBlockState(x, y, z);
+        return state.get(SmelteryController.LAYERS_PROPERTY);
     }
 
-    @Override
-    public ItemStack getStack(int slot) {
-        return null;
+    public void setLayers(int layers) {
+        World world = MinecraftAccessor.getInstance().world;
+        BlockState state = world.getBlockState(x, y, z);
+        updateBlockState(world, x, y, z, state.with(SmelteryController.LAYERS_PROPERTY, layers));
     }
 
-    @Override
-    public ItemStack removeStack(int slot, int amount) {
-        return null;
-    }
-
-    @Override
-    public void setStack(int slot, ItemStack stack) {
-
-    }
-
-    @Override
-    public String getName() {
-        return "";
-    }
-
-    @Override
-    public int getMaxCountPerStack() {
-        return 0;
-    }
-
-    @Override
-    public boolean canPlayerUse(PlayerEntity player) {
-        return false;
+    public void updateBlockState(World world, int x, int y, int z, BlockState newState)
+    {
+        Block block = Block.BLOCKS[world.getBlockId(x, y, z)];
+        if (block instanceof SmelteryController smeltery)
+            smeltery.updateBlockState(world, x, y, z, newState);
     }
 
     void adjustLayers (int lay, boolean forceAdjust)
     {
-        if (lay != layers || forceAdjust)
+        if (lay != getLayers() || forceAdjust)
         {
             needsUpdate = true;
-            layers = lay;
+            setLayers(lay);
             maxLiquid = 20000 * lay;
             int[] tempActive = activeTemps;
             activeTemps = new int[9 * lay];
@@ -173,10 +171,139 @@ public class SmelteryEntity extends BlockEntity implements Inventory, IMasterEnt
         }
     }
 
+    @Override
+    public String getName() {
+        return "Smeltery";
+    }
+
+    public ScreenHandler getGuiContainer(PlayerInventory inventoryplayer, World world, int x, int y, int z)
+    {
+        return new SmelteryHandler(inventoryplayer, this);
+    }
+
     public Direction getRenderDirection ()
     {
         BlockState state = MinecraftAccessor.getInstance().world.getBlockState(x, y, z);
         return state.get(SmelteryController.FACING_PROPERTY);
+    }
+
+    public boolean getActive()
+    {
+        return validStructure;
+    }
+
+    public void setActive()
+    {
+        needsUpdate = true;
+        world.setBlockDirty(x, y, z);
+    }
+
+    public int getScaledFuelGague (int scale)
+    {
+        int ret = (fuelGague * scale) / 52;
+        if (ret < 1)
+            ret = 1;
+        return ret;
+    }
+
+    public int getInternalTemperature ()
+    {
+        return internalTemp;
+    }
+
+    public int getTempForSlot (int slot)
+    {
+        return activeTemps[slot];
+    }
+
+    public int getMeltingPointForSlot (int slot)
+    {
+        return meltingTemps[slot];
+    }
+
+    @Override
+    public int size() {
+        return inventory.length;
+    }
+
+    @Override
+    public ItemStack getStack(int slot) {
+        return inventory[slot];
+    }
+
+    @Override
+    public ItemStack removeStack(int slot, int amount) {
+        if (inventory[slot] != null)
+        {
+            if (inventory[slot].count <= amount)
+            {
+                ItemStack stack = inventory[slot];
+                inventory[slot] = null;
+                return stack;
+            }
+            ItemStack split = inventory[slot].split(amount);
+            if (inventory[slot].count == 0)
+            {
+                inventory[slot] = null;
+            }
+            return split;
+        }
+        else
+        {
+            return null;
+        }
+    }
+
+    @Override
+    public void setStack(int slot, ItemStack stack) {
+        inventory[slot] = stack;
+    }
+
+    @Override
+    public int getMaxCountPerStack() {
+        return 1;
+    }
+
+    @Override
+    public boolean canPlayerUse(PlayerEntity player) {
+        return true;
+    }
+
+    public void updateFuelDisplay ()
+    {
+        if (activeLavaTank == null || useTime > 0)
+            return;
+
+        if (world.getBlockId(activeLavaTank.x, activeLavaTank.y, activeLavaTank.z) == 0)
+        {
+            fuelAmount = 0;
+            fuelGague = 0;
+            return;
+        }
+
+        BlockEntity tankContainer = world.getBlockEntity(activeLavaTank.x, activeLavaTank.y, activeLavaTank.z);
+        if (tankContainer == null)
+        {
+            fuelAmount = 0;
+            fuelGague = 0;
+            return;
+        }
+        if (tankContainer instanceof LavaTankEntity lavaTank)
+        {
+            needsUpdate = true;
+            FluidStack liquid = lavaTank.drain(150, false);
+            if (liquid != null && liquid.getFluid() == Material.LAVA)
+            {
+                int capacity = lavaTank.tank.getCapacity();
+                fuelAmount = liquid.amount;
+                fuelGague = liquid.amount * 52 / capacity;
+            }
+            else
+            {
+                fuelAmount = 0;
+                fuelGague = 0;
+            }
+        }
     }
 
     /* Multiblock */
@@ -206,7 +333,7 @@ public class SmelteryEntity extends BlockEntity implements Inventory, IMasterEnt
 
         World world = MinecraftAccessor.getInstance().world;
         BlockState blockState = world.getBlockState(x, y, z);
-        world.setBlockState(x, y, z, blockState
+        updateBlockState(world, x, y, z, blockState
             .with(SmelteryController.LUMINANCE_PROPERTY, validStructure ? 13 : 0)
             .with(SmelteryController.ACTIVE_PROPERTY, validStructure));
     }
@@ -254,7 +381,7 @@ public class SmelteryEntity extends BlockEntity implements Inventory, IMasterEnt
             checkLayers += recurseStructureDown(x, y - 1, z, 0);
         }
 
-        if (tempValidStructure != validStructure || checkLayers != this.layers)
+        if (tempValidStructure != validStructure || checkLayers != getLayers())
         {
             if (tempValidStructure)
             {
@@ -454,5 +581,113 @@ public class SmelteryEntity extends BlockEntity implements Inventory, IMasterEnt
     boolean validTankID (int blockID)
     {
         return blockID == InitListener.smelteryTank.id;// || blockID == TContent.lavaTankNether.blockID;
+    }
+
+    public int getCapacity ()
+    {
+        return maxLiquid;
+    }
+
+    public int getTotalLiquid ()
+    {
+        return currentLiquid;
+    }
+
+    @Override
+    public void readNbt(NbtCompound nbt) {
+        super.readNbt(nbt);
+        readInventoryFromNbt(nbt);
+
+        internalTemp = nbt.getInt("InternalTemp");
+        //inUse = nbt.getBoolean("InUse");
+
+        int[] center = nbt.getIntArray("CenterPos");
+        if (center.length > 2)
+            centerPos = new CoordTuple(center[0], center[1], center[2]);
+        else
+            centerPos = new CoordTuple(x, y, z);
+
+        direction = nbt.getByte("Direction");
+        useTime = nbt.getInt("UseTime");
+        currentLiquid = nbt.getInt("CurrentLiquid");
+        maxLiquid = nbt.getInt("MaxLiquid");
+        meltingTemps = nbt.getIntArray("MeltingTemps");
+        activeTemps = nbt.getIntArray("ActiveTemps");
+
+        NbtList liquidTag = nbt.getList("Liquids");
+        moltenMetal.clear();
+
+        for (int iter = 0; iter < liquidTag.size(); iter++)
+        {
+            NbtCompound liquidNbt = (NbtCompound) liquidTag.get(iter);
+            FluidStack fluid = FluidStack.loadFluidStackFromNBT(liquidNbt);
+            if (fluid != null)
+                moltenMetal.add(fluid);
+        }
+    }
+
+    public void readInventoryFromNbt(NbtCompound nbt)
+    {
+        NbtList nbtList = nbt.getList("Items");
+        inventory = new ItemStack[nbt.getInt("InventorySize")];
+        for (int i = 0; i < nbtList.size(); i++)
+        {
+            NbtCompound tagList = (NbtCompound)nbtList.get(i);
+            byte slotID = tagList.getByte("Slot");
+            if (slotID >= 0 && slotID < inventory.length)
+                inventory[slotID] = new ItemStack(tagList);
+        }
+    }
+
+    @Override
+    public void writeNbt(NbtCompound nbt) {
+        super.writeNbt(nbt);
+        writeInventoryToNbt(nbt);
+
+        nbt.putInt("InternalTemp", internalTemp);
+        //nbt.putBoolean("InUse", inUse);
+
+        int[] center = new int[3];// { centerPos.x, centerPos.y, centerPos.z };
+        if (centerPos == null)
+            center = new int[] { x, y, z };
+        else
+            center = new int[] { centerPos.x, centerPos.y, centerPos.z };
+        nbt.put("CenterPos", center);
+
+        nbt.putByte("Direction", direction);
+        nbt.putInt("UseTime", useTime);
+        nbt.putInt("CurrentLiquid", currentLiquid);
+        nbt.putInt("MaxLiquid", maxLiquid);
+        nbt.put("MeltingTemps", meltingTemps);
+        nbt.put("ActiveTemps", activeTemps);
+
+        NbtList taglist = new NbtList();
+        for (FluidStack liquid : moltenMetal)
+        {
+            NbtCompound liquidNbt = new NbtCompound();
+            liquid.writeToNBT(liquidNbt);
+            taglist.add(nbt);
+        }
+
+        nbt.put("Liquids", taglist);
+    }
+
+    public void writeInventoryToNbt(NbtCompound nbt)
+    {
+        nbt.putInt("InventorySize", size());
+
+        NbtList nbtList = new NbtList();
+        for (int iter = 0; iter < inventory.length; iter++)
+        {
+            if (inventory[iter] != null)
+            {
+                NbtCompound tagList = new NbtCompound();
+                tagList.putByte("Slot", (byte)iter);
+                inventory[iter].writeNbt(tagList);
+                nbtList.add(tagList);
+            }
+        }
+
+        nbt.put("Items", nbtList);
     }
 }
