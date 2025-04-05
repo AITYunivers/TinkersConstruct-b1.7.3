@@ -1,0 +1,7 @@
+{
+  "parent": "tconstruct:block/front_facing",
+  "textures": {
+    "side": "tconstruct:block/seared_bricks",
+    "front": "tconstruct:block/smeltery/smeltery_inactive"
+  }
+}

@@ -12,6 +12,11 @@ public class LavaTankEntity extends MultiServantEntity
     public FluidTank tank;
     public int renderOffset;
 
+    // For rendering
+    public boolean compiled;
+    public int list;
+    public float oldAmount;
+
     public LavaTankEntity()
     {
         tank = new FluidTank(1000 * 4); // 4 Buckets

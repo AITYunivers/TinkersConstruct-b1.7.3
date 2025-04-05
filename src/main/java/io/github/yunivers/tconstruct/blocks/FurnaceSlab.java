@@ -2,14 +2,20 @@ package io.github.yunivers.tconstruct.blocks;
 
 import io.github.yunivers.tconstruct.events.init.InitListener;
 import io.github.yunivers.tconstruct.mixin.FurnaceBlockAccessor;
+import io.github.yunivers.tconstruct.mixin.MinecraftAccessor;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.block.Block;
 import net.minecraft.block.FurnaceBlock;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.FurnaceBlockEntity;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.BlockView;
+import net.minecraft.world.LightType;
 import net.minecraft.world.World;
+import net.modificationstation.stationapi.api.block.BlockState;
+import net.modificationstation.stationapi.api.state.StateManager;
+import net.modificationstation.stationapi.api.state.property.IntProperty;
 import net.modificationstation.stationapi.api.template.block.BlockTemplate;
 import net.modificationstation.stationapi.api.util.Identifier;
 
@@ -17,6 +23,8 @@ import java.util.Random;
 
 public class FurnaceSlab extends FurnaceBlock implements BlockTemplate
 {
+    public static final IntProperty LUMINANCE_PROPERTY = IntProperty.of("luminance", 0, 15);
+
     public FurnaceSlab(Identifier identifier, boolean lit) {
         super(BlockTemplate.getNextId(), lit);
         BlockTemplate.onConstructor(this, identifier);
@@ -25,6 +33,15 @@ public class FurnaceSlab extends FurnaceBlock implements BlockTemplate
         setSoundGroup(STONE_SOUND_GROUP);
         ignoreMetaUpdates();
         this.setBoundingBox(0.0F, 0.0F, 0.0F, 1.0F, 0.5F, 1.0F);
+
+        setDefaultState(getStateManager().getDefaultState().with(LUMINANCE_PROPERTY, 0));
+        setLuminance((blockState) -> blockState.get(LUMINANCE_PROPERTY));
+    }
+
+    @Override
+    public void appendProperties(StateManager.Builder<Block, BlockState> builder) {
+        super.appendProperties(builder);
+        builder.add(LUMINANCE_PROPERTY);
     }
 
     @Override
@@ -84,7 +101,12 @@ public class FurnaceSlab extends FurnaceBlock implements BlockTemplate
         }
     }
 
-    public boolean isLit(BlockEntity blockEntity)
+    public static boolean isLit(BlockView blockView, int x, int y, int z)
+    {
+        return ((FurnaceBlockEntity)blockView.getBlockEntity(x, y, z)).burnTime > 0;
+    }
+
+    public static boolean isLit(BlockEntity blockEntity)
     {
         return ((FurnaceBlockEntity)blockEntity).burnTime > 0;
     }
@@ -94,10 +116,21 @@ public class FurnaceSlab extends FurnaceBlock implements BlockTemplate
         BlockEntity var6 = world.getBlockEntity(x, y, z);
         FurnaceBlockAccessor.setIgnoreBlockRemoval(true);
         world.setBlock(x, y, z, InitListener.furnaceSlab.id);
+        BlockState blockState = world.getBlockState(x, y, z);
+        world.setBlockState(x, y, z, blockState.with(LUMINANCE_PROPERTY, isLit(var6) ? 13 : 0));
         FurnaceBlockAccessor.setIgnoreBlockRemoval(false);
         world.setBlockMeta(x, y, z, var5);
         var6.cancelRemoval();
         world.setBlockEntity(x, y, z, var6);
+    }
+
+    public static BlockPos getPositionInChunk(int x, int y, int z) {
+        BlockPos pos = new BlockPos(x % 16, y, z % 16);
+        if (x < 0)
+            pos = pos.add(16, 0, 0);
+        if (z < 0)
+            pos = pos.add(0, 0, 16);
+        return pos;
     }
 
     @Environment(EnvType.CLIENT)
@@ -124,5 +157,14 @@ public class FurnaceSlab extends FurnaceBlock implements BlockTemplate
             }
 
         }
+    }
+
+    @Environment(EnvType.CLIENT)
+    public float getLuminance(BlockView blockView, int x, int y, int z) {
+        BlockEntity entity = blockView.getBlockEntity(x, y, z);
+        int luminance = 0;
+        if (entity != null && entity.getBlock().id == id && isLit(entity))
+            luminance = (int)(15.0F * 0.875f);
+        return blockView.getNaturalBrightness(x, y, z, luminance);
     }
 }

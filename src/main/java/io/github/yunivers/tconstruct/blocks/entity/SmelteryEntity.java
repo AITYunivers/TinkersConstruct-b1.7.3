@@ -2,7 +2,9 @@ package io.github.yunivers.tconstruct.blocks.entity;
 
 import io.github.yunivers.tconstruct.blocks.smeltery.*;
 import io.github.yunivers.tconstruct.events.init.InitListener;
+import io.github.yunivers.tconstruct.mixin.MinecraftAccessor;
 import io.github.yunivers.tconstruct.util.CoordTuple;
+import io.github.yunivers.tconstruct.util.FluidStack;
 import net.minecraft.block.Block;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.ItemEntity;
@@ -10,6 +12,9 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.world.World;
+import net.modificationstation.stationapi.api.block.BlockState;
+import net.modificationstation.stationapi.api.util.math.Direction;
 
 import java.util.ArrayList;
 import java.util.Random;
@@ -125,16 +130,16 @@ public class SmelteryEntity extends BlockEntity implements Inventory, IMasterEnt
                         int offsetZ = 0;
                         switch (getRenderDirection())
                         {
-                            case 2: // +z
+                            case SOUTH: // +z
                                 offsetZ = -1;
                                 break;
-                            case 3: // -z
+                            case NORTH: // -z
                                 offsetZ = 1;
                                 break;
-                            case 4: // +x
+                            case EAST: // +x
                                 offsetX = -1;
                                 break;
-                            case 5: // -x
+                            case WEST: // -x
                                 offsetX = 1;
                                 break;
                         }
@@ -168,14 +173,10 @@ public class SmelteryEntity extends BlockEntity implements Inventory, IMasterEnt
         }
     }
 
-    public byte getRenderDirection ()
+    public Direction getRenderDirection ()
     {
-        return direction;
-    }
-
-    public void setDirection (byte direction)
-    {
-        this.direction = direction;
+        BlockState state = MinecraftAccessor.getInstance().world.getBlockState(x, y, z);
+        return state.get(SmelteryController.FACING_PROPERTY);
     }
 
     /* Multiblock */
@@ -186,21 +187,28 @@ public class SmelteryEntity extends BlockEntity implements Inventory, IMasterEnt
 
     public void checkValidPlacement ()
     {
+        // Inverted bc it wasts to go backwards
         switch (getRenderDirection())
         {
-            case 2: // +z
+            case NORTH: // +z
                 alignInitialPlacement(x, y, z + 2);
                 break;
-            case 3: // -z
+            case SOUTH: // -z
                 alignInitialPlacement(x, y, z - 2);
                 break;
-            case 4: // +x
+            case WEST: // +x
                 alignInitialPlacement(x + 2, y, z);
                 break;
-            case 5: // -x
+            case EAST: // -x
                 alignInitialPlacement(x - 2, y, z);
                 break;
         }
+
+        World world = MinecraftAccessor.getInstance().world;
+        BlockState blockState = world.getBlockState(x, y, z);
+        world.setBlockState(x, y, z, blockState
+            .with(SmelteryController.LUMINANCE_PROPERTY, validStructure ? 13 : 0)
+            .with(SmelteryController.ACTIVE_PROPERTY, validStructure));
     }
 
     @SuppressWarnings("ConstantValue")
@@ -251,7 +259,7 @@ public class SmelteryEntity extends BlockEntity implements Inventory, IMasterEnt
             if (tempValidStructure)
             {
                 internalTemp = 900;
-                //activeLavaTank = lavaTanks.get(0);
+                activeLavaTank = lavaTanks.get(0);
                 adjustLayers(checkLayers, false);
                 world.setBlockDirty(x, y, z);
                 validStructure = true;
@@ -294,7 +302,7 @@ public class SmelteryEntity extends BlockEntity implements Inventory, IMasterEnt
             numBricks += checkBricks(x + 2, y, zPos);
         }
 
-        return numBricks == 12;// && !lavaTanks.isEmpty();
+        return numBricks == 12 && !lavaTanks.isEmpty();
     }
 
     public int recurseStructureUp (int x, int y, int z, int count)
@@ -381,7 +389,17 @@ public class SmelteryEntity extends BlockEntity implements Inventory, IMasterEnt
                 if (validBlockID(world.getBlockId(xPos, y, zPos)) &&
                     (world.getBlockId(xPos, y, zPos) != InitListener.smelteryController.id))
                     // MAKE SURE THIS ALSO DOES `!= InitListener.smelteryDrain.id`
+                {
+                    BlockEntity entity = world.getBlockEntity(xPos, y, zPos);
+                    if (entity instanceof MultiServantEntity servant)
+                    {
+                        if (servant.hasValidMaster())
+                            servant.verifyMaster(this, this.x, this.y, this.z);
+                        else
+                            servant.setMaster(this.x, this.y, this.z);
+                    }
                     bottomBricks++;
+                }
             }
         }
 
@@ -419,10 +437,10 @@ public class SmelteryEntity extends BlockEntity implements Inventory, IMasterEnt
                     tempBricks++;
                 }
 
-                /*if (te instanceof LavaTankLogic)
+                if (te instanceof LavaTankEntity)
                 {
                     lavaTanks.add(new CoordTuple(x, y, z));
-                }*/
+                }
             }
         }
         return tempBricks;
@@ -435,6 +453,6 @@ public class SmelteryEntity extends BlockEntity implements Inventory, IMasterEnt
 
     boolean validTankID (int blockID)
     {
-        return false;//blockID == TContent.lavaTank.blockID || blockID == TContent.lavaTankNether.blockID;
+        return blockID == InitListener.smelteryTank.id;// || blockID == TContent.lavaTankNether.blockID;
     }
 }

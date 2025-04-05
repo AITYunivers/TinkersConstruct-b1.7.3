@@ -2,6 +2,7 @@ package io.github.yunivers.tconstruct.blocks.smeltery;
 
 import io.github.yunivers.tconstruct.blocks.entity.SmelteryEntity;
 import io.github.yunivers.tconstruct.events.init.InitListener;
+import io.github.yunivers.tconstruct.mixin.MinecraftAccessor;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.block.Block;
@@ -14,16 +15,41 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.BlockView;
 import net.minecraft.world.World;
+import net.modificationstation.stationapi.api.block.BlockState;
+import net.modificationstation.stationapi.api.state.StateManager;
+import net.modificationstation.stationapi.api.state.property.EnumProperty;
+import net.modificationstation.stationapi.api.state.property.IntProperty;
+import net.modificationstation.stationapi.api.state.property.BooleanProperty;
 import net.modificationstation.stationapi.api.template.block.TemplateBlockWithEntity;
 import net.modificationstation.stationapi.api.util.Identifier;
+import net.modificationstation.stationapi.api.util.math.Direction;
+
+import java.util.Random;
 
 public class SmelteryController extends TemplateBlockWithEntity implements ISmelteryBlock, Inventory
 {
+    public static final EnumProperty<Direction> FACING_PROPERTY = EnumProperty.of("facing", Direction.class);
+    public static final IntProperty LUMINANCE_PROPERTY = IntProperty.of("luminance", 0, 15);
+    public static final BooleanProperty ACTIVE_PROPERTY = BooleanProperty.of("active");
+
     public SmelteryController(Identifier identifier) {
         super(identifier, Material.STONE);
         setResistance(10.0F);
         setHardness(2.0F);
         setSoundGroup(Block.METAL_SOUND_GROUP);
+
+        setDefaultState(getStateManager().getDefaultState().with(LUMINANCE_PROPERTY, 0));
+        setDefaultState(getStateManager().getDefaultState().with(FACING_PROPERTY, Direction.NORTH));
+        setDefaultState(getStateManager().getDefaultState().with(ACTIVE_PROPERTY, false));
+        setLuminance((blockState) -> blockState.get(LUMINANCE_PROPERTY));
+    }
+
+    @Override
+    public void appendProperties(StateManager.Builder<Block, BlockState> builder) {
+        super.appendProperties(builder);
+        builder.add(LUMINANCE_PROPERTY);
+        builder.add(FACING_PROPERTY);
+        builder.add(ACTIVE_PROPERTY);
     }
 
     @Override
@@ -63,7 +89,6 @@ public class SmelteryController extends TemplateBlockWithEntity implements ISmel
 
     @Override
     public void markDirty() {
-
     }
 
     @Override
@@ -75,34 +100,15 @@ public class SmelteryController extends TemplateBlockWithEntity implements ISmel
     public void onPlaced(World world, int x, int y, int z, LivingEntity placer) {
         BlockEntity logic = world.getBlockEntity(x, y, z);
         int facing = MathHelper.floor((double)(placer.yaw * 4.0F / 360.0F) + (double)0.5F) & 3;
-        byte direction = 0;
-        if (facing == 0)
-            world.setBlockMeta(x, y, z, direction = 2);
-        else if (facing == 1)
-            world.setBlockMeta(x, y, z, direction = 5);
-        else if (facing == 2)
-            world.setBlockMeta(x, y, z, direction = 3);
-        else
-            world.setBlockMeta(x, y, z, direction = 4);
-
-        if (logic instanceof SmelteryEntity smelteryEntity)
-            smelteryEntity.setDirection(direction);
+        world.setBlockState(x, y, z, getDefaultState().with(FACING_PROPERTY,
+                switch(facing) {
+                    case 0 -> Direction.NORTH;
+                    case 1 -> Direction.EAST;
+                    case 2 -> Direction.SOUTH;
+                    default -> Direction.WEST;
+                }));
 
         onBlockPlacedElsewhere(world, x, y, z, placer);
-    }
-
-    @Environment(EnvType.CLIENT)
-    public int getTextureId(BlockView blockView, int x, int y, int z, int side) {
-        int facing = blockView.getBlockMeta(x, y, z);
-        if (side != facing) {
-            return InitListener.SmelterySide;
-        } else {
-            return isLit(blockView.getBlockEntity(x, y, z)) ? InitListener.SmelteryFrontActive : InitListener.SmelteryFront;
-        }
-    }
-
-    public boolean isLit(BlockEntity entity) {
-        return entity instanceof SmelteryEntity && ((SmelteryEntity)entity).validStructure;
     }
 
     public int getTexture(int side) {
@@ -116,5 +122,42 @@ public class SmelteryController extends TemplateBlockWithEntity implements ISmel
     {
         SmelteryEntity logic = (SmelteryEntity) world.getBlockEntity(x, y, z);
         logic.checkValidPlacement();
+    }
+
+    @Override
+    public void neighborUpdate(World world, int x, int y, int z, int id) {
+        SmelteryEntity logic = (SmelteryEntity) world.getBlockEntity(x, y, z);
+        logic.checkValidPlacement();
+    }
+
+    @Environment(EnvType.CLIENT)
+    public void randomDisplayTick(World world, int x, int y, int z, Random random) {
+        BlockState state = world.getBlockState(x, y, z);
+        if (state.get(ACTIVE_PROPERTY)) {
+            Direction dir = state.get(FACING_PROPERTY);
+            float offsetX = (float)x + 0.5F;
+            float offsetY = (float)y + 0.5F + random.nextFloat() * 6.0F / 16.0F;
+            float offsetZ = (float)z + 0.5F;
+            float horiOffset = 0.52F;
+            float variation = random.nextFloat() * 0.6F - 0.3F;
+            switch (dir) {
+                case NORTH:
+                    world.addParticle("smoke", (double)(offsetX + variation), (double)offsetY, (double)(offsetZ + horiOffset), (double)0.0F, (double)0.0F, (double)0.0F);
+                    world.addParticle("flame", (double)(offsetX + variation), (double)offsetY, (double)(offsetZ + horiOffset), (double)0.0F, (double)0.0F, (double)0.0F);
+                    break;
+                case SOUTH:
+                    world.addParticle("smoke", (double)(offsetX + variation), (double)offsetY, (double)(offsetZ - horiOffset), (double)0.0F, (double)0.0F, (double)0.0F);
+                    world.addParticle("flame", (double)(offsetX + variation), (double)offsetY, (double)(offsetZ - horiOffset), (double)0.0F, (double)0.0F, (double)0.0F);
+                    break;
+                case EAST:
+                    world.addParticle("smoke", (double)(offsetX + horiOffset), (double)offsetY, (double)(offsetZ + variation), (double)0.0F, (double)0.0F, (double)0.0F);
+                    world.addParticle("flame", (double)(offsetX + horiOffset), (double)offsetY, (double)(offsetZ + variation), (double)0.0F, (double)0.0F, (double)0.0F);
+                    break;
+                case WEST:
+                    world.addParticle("smoke", (double)(offsetX - horiOffset), (double)offsetY, (double)(offsetZ + variation), (double)0.0F, (double)0.0F, (double)0.0F);
+                    world.addParticle("flame", (double)(offsetX - horiOffset), (double)offsetY, (double)(offsetZ + variation), (double)0.0F, (double)0.0F, (double)0.0F);
+                    break;
+            }
+        }
     }
 }

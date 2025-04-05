@@ -3,7 +3,7 @@
   "textures": {
     "top": "tconstruct:block/smeltery/lava_tank_top",
     "side": "tconstruct:block/smeltery/lava_tank_side",
-    "bottom": "tconstruct:block/smeltery/seared_gague_top"
+    "bottom": "tconstruct:block/seared_bricks_square"
   },
   "elements": [
     {

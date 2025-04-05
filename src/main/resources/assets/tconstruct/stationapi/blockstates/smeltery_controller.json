@@ -1,0 +1,42 @@
+{
+  "variants": {
+    "facing=north,active=false": {
+      "model": "tconstruct:block/smeltery/smeltery_controller_inactive",
+      "uvlock": true
+    },
+    "facing=north,active=true": {
+      "model": "tconstruct:block/smeltery/smeltery_controller_active",
+      "uvlock": true
+    },
+    "facing=east,active=false": {
+      "model": "tconstruct:block/smeltery/smeltery_controller_inactive",
+      "y": 90,
+      "uvlock": true
+    },
+    "facing=east,active=true": {
+      "model": "tconstruct:block/smeltery/smeltery_controller_active",
+      "y": 90,
+      "uvlock": true
+    },
+    "facing=south,active=false": {
+      "model": "tconstruct:block/smeltery/smeltery_controller_inactive",
+      "y": 180,
+      "uvlock": true
+    },
+    "facing=south,active=true": {
+      "model": "tconstruct:block/smeltery/smeltery_controller_active",
+      "y": 180,
+      "uvlock": true
+    },
+    "facing=west,active=false": {
+      "model": "tconstruct:block/smeltery/smeltery_controller_inactive",
+      "y": 270,
+      "uvlock": true
+    },
+    "facing=west,active=true": {
+      "model": "tconstruct:block/smeltery/smeltery_controller_active",
+      "y": 270,
+      "uvlock": true
+    }
+  }
+}

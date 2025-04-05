@@ -25,9 +25,6 @@ import org.lwjgl.util.glu.GLU;
 public class TankRenderer extends BlockEntityRenderer
 {
     public static final double FLUID_INSET = 0.005d;
-    private boolean compiled;
-    private int list;
-    private float oldAmount;
 
     @Override
     public void render(BlockEntity blockEntity, double x, double y, double z, float tickDelta) {
@@ -38,9 +35,9 @@ public class TankRenderer extends BlockEntityRenderer
                 FluidStack liquid = te.tank.getFluid();
 
                 float height = (float)liquid.amount / (float)te.tank.getCapacity();
-                if (oldAmount != liquid.amount) {
-                    compiled = false;
-                    oldAmount = liquid.amount;
+                if (te.oldAmount != liquid.amount) {
+                    te.compiled = false;
+                    te.oldAmount = liquid.amount;
                 }
 
                 // Tweening looked non-beta, also had bugs so
@@ -58,6 +55,9 @@ public class TankRenderer extends BlockEntityRenderer
 
                 BlockRenderManager brm = ((WorldRendererAccessor)MinecraftAccessor.getInstance().worldRenderer).getBlockRenderManager();
                 RenderFluid(brm, te, x, y, z, height);
+            }
+            else {
+                te.compiled = false;
             }
         }
     }
@@ -81,9 +81,9 @@ public class TankRenderer extends BlockEntityRenderer
         GL11.glTranslated(x, y, z);
         LogGLError("renderFluid:1");
 
-        if (!compiled)
+        if (!entity.compiled)
             compileList(block, entity, blockView, x, y, z, height);
-        GL11.glCallList(this.list);
+        GL11.glCallList(entity.list);
 
         LogGLError("renderFluid:2");
         GL11.glPopMatrix();
@@ -100,9 +100,11 @@ public class TankRenderer extends BlockEntityRenderer
     }
 
     private void compileList(Block block, LavaTankEntity entity, BlockView blockView, double x, double y, double z, float height) {
-        this.list = GlAllocationUtils.generateDisplayLists(1);
-        GL11.glNewList(this.list, GL11.GL_COMPILE);
+        entity.list = GlAllocationUtils.generateDisplayLists(1);
+        GL11.glNewList(entity.list, GL11.GL_COMPILE);
         GL11.glEnable(GL11.GL_TEXTURE_2D);
+        GL11.glEnable(GL11.GL_BLEND);
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
         LogGLError("compileList:1");
 
@@ -144,8 +146,6 @@ public class TankRenderer extends BlockEntityRenderer
             int nz = entity.z + (side == 1 ? 1 : side == 0 ? -1 : 0);
 
             int sideTexture = block.getTexture(side + 2, meta);
-            int su = (sideTexture & 15) << 4;
-            int sv = sideTexture & 240;
 
             double x1, x2, z1, z2;
             if (side == 0) {
@@ -180,16 +180,16 @@ public class TankRenderer extends BlockEntityRenderer
             double heightScale = imgHeight / 16d;
 
             double u1 = sideSprite.getStartU();
-            double u2 = sideSprite.getEndU() / widthScale;
+            double u2 = u1 + (sideSprite.getEndU() - u1) / widthScale;
             double v1 = sideSprite.getStartV();
-            double v2 = sideSprite.getEndV() / heightScale;
+            double v2 = v1 + (sideSprite.getEndV() - v1) / heightScale;
             v2 = v1 + (v2 - v1) * height;
 
             t.color(brightnessTop * sideBrightness * r, brightnessTop * sideBrightness * g, brightnessTop * sideBrightness * b);
-            t.vertex(x1, height,      z1, u1, v1);
-            t.vertex(x2, height,      z2, u2, v1);
-            t.vertex(x2, FLUID_INSET, z2, u2, v2);
-            t.vertex(x1, FLUID_INSET, z1, u1, v2);
+            t.vertex(x1, height,      z1, u1, v1); // Top Left
+            t.vertex(x2, height,      z2, u2, v1); // Top Right
+            t.vertex(x2, FLUID_INSET, z2, u2, v2); // Bottom Right
+            t.vertex(x1, FLUID_INSET, z1, u1, v2); // Bottom Left
 
             LogGLError("compileList:" + (4 + side));
         }
@@ -198,7 +198,8 @@ public class TankRenderer extends BlockEntityRenderer
         block.maxY = 1.0F;
 
         t.draw();
+        GL11.glDisable(GL11.GL_BLEND);
         GL11.glEndList();
-        this.compiled = true;
+        entity.compiled = true;
     }
 }
