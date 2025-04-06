@@ -1,13 +1,13 @@
 package io.github.yunivers.tconstruct.blocks.smeltery;
 
+import io.github.yunivers.stationfluidapi.api.FluidStack;
 import io.github.yunivers.tconstruct.blocks.entity.LavaTankEntity;
 import io.github.yunivers.tconstruct.events.init.InitListener;
-import io.github.yunivers.tconstruct.util.FluidStack;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.block.Block;
+import net.minecraft.block.LiquidBlock;
 import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.block.material.FluidMaterial;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.LivingEntity;
@@ -16,11 +16,8 @@ import net.minecraft.item.BucketItem;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.BlockView;
 import net.minecraft.world.World;
 import net.modificationstation.stationapi.api.block.BlockState;
-import net.modificationstation.stationapi.api.item.ItemPlacementContext;
 import net.modificationstation.stationapi.api.state.StateManager;
 import net.modificationstation.stationapi.api.state.property.BooleanProperty;
 import net.modificationstation.stationapi.api.template.block.TemplateBlockWithEntity;
@@ -72,7 +69,7 @@ public class LavaTankBlock extends TemplateBlockWithEntity
         {
             FluidStack liquid = new FluidStack(heldItem);
             LavaTankEntity logic = (LavaTankEntity) world.getBlockEntity(x, y, z);
-            if (liquid.fluidType != null)
+            if (liquid.fluid != null)
             {
                 int amount = logic.fill(liquid, false);
                 if (amount == liquid.amount)
@@ -86,14 +83,14 @@ public class LavaTankBlock extends TemplateBlockWithEntity
             }
             else if (heldItem.getItem() instanceof BucketItem)
             {
+                LiquidBlock fluid = logic.tank.getFluid().fluid;
                 if (heldItem.getItem() == Item.BUCKET && logic.tank.getFluidAmount() >= 1000)
                 {
-                    FluidMaterial fluidType = logic.tank.getFluid().fluidType;
                     logic.drain(1000, true);
                     ItemStack stack;
-                    if (fluidType == Material.WATER)
+                    if (fluid.id == Block.WATER.id || fluid.id == Block.FLOWING_WATER.id)
                         stack = new ItemStack(Item.WATER_BUCKET);
-                    else if (fluidType == Material.LAVA)
+                    else if (fluid.id == Block.LAVA.id || fluid.id == Block.FLOWING_LAVA.id)
                         stack = new ItemStack(Item.LAVA_BUCKET);
                     else return false;
 
@@ -193,12 +190,12 @@ public class LavaTankBlock extends TemplateBlockWithEntity
         // Very possibly won't work (yep it doesn't) Wait maybe it does (It does!)
         ItemStack stack = ((PlayerEntity)placer).inventory.getSelectedItem();
         NbtCompound nbt = stack.getStationNbt();
-        if (nbt != null)
+        if (nbt.contains("Fluid"))
         {
             NbtCompound liquidTag = nbt.getCompound("Fluid");
-            if (liquidTag != null)
+            if (liquidTag.contains("FluidID") && liquidTag.contains("Amount"))
             {
-                FluidStack liquid = FluidStack.loadFluidStackFromNBT(liquidTag);
+                FluidStack liquid = new FluidStack(liquidTag);
                 LavaTankEntity logic = (LavaTankEntity) world.getBlockEntity(x, y, z);
                 logic.tank.setFluid(liquid);
             }

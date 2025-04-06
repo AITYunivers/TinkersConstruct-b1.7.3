@@ -1,11 +1,11 @@
 package io.github.yunivers.tconstruct.blocks.entity;
 
+import io.github.yunivers.stationfluidapi.api.FluidStack;
 import io.github.yunivers.tconstruct.blocks.smeltery.*;
 import io.github.yunivers.tconstruct.events.init.InitListener;
 import io.github.yunivers.tconstruct.inventory.SmelteryHandler;
 import io.github.yunivers.tconstruct.mixin.MinecraftAccessor;
 import io.github.yunivers.tconstruct.util.CoordTuple;
-import io.github.yunivers.tconstruct.util.FluidStack;
 import net.minecraft.block.Block;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.material.Material;
@@ -292,7 +292,7 @@ public class SmelteryEntity extends BlockEntity implements Inventory, IMasterEnt
         {
             needsUpdate = true;
             FluidStack liquid = lavaTank.drain(150, false);
-            if (liquid != null && liquid.getFluid() == Material.LAVA)
+            if (liquid != null && (liquid.fluid.id == Block.LAVA.id || liquid.fluid.id == Block.FLOWING_LAVA.id))
             {
                 int capacity = lavaTank.tank.getCapacity();
                 fuelAmount = liquid.amount;
@@ -620,9 +620,8 @@ public class SmelteryEntity extends BlockEntity implements Inventory, IMasterEnt
         for (int iter = 0; iter < liquidTag.size(); iter++)
         {
             NbtCompound liquidNbt = (NbtCompound) liquidTag.get(iter);
-            FluidStack fluid = FluidStack.loadFluidStackFromNBT(liquidNbt);
-            if (fluid != null)
-                moltenMetal.add(fluid);
+            FluidStack fluid = new FluidStack(liquidNbt);
+            moltenMetal.add(fluid);
         }
     }
 
@@ -665,7 +664,7 @@ public class SmelteryEntity extends BlockEntity implements Inventory, IMasterEnt
         for (FluidStack liquid : moltenMetal)
         {
             NbtCompound liquidNbt = new NbtCompound();
-            liquid.writeToNBT(liquidNbt);
+            liquid.writeNbt(liquidNbt);
             taglist.add(nbt);
         }
 

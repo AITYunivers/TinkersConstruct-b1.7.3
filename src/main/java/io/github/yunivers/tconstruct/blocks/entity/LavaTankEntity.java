@@ -1,7 +1,7 @@
 package io.github.yunivers.tconstruct.blocks.entity;
 
+import io.github.yunivers.stationfluidapi.api.FluidStack;
 import io.github.yunivers.tconstruct.blocks.smeltery.MultiServantEntity;
-import io.github.yunivers.tconstruct.util.FluidStack;
 import io.github.yunivers.tconstruct.util.FluidTank;
 import net.minecraft.block.Block;
 import net.minecraft.block.LiquidBlock;
@@ -59,7 +59,7 @@ public class LavaTankEntity extends MultiServantEntity
     {
         if (containsFluid())
         {
-            LiquidBlock block = FluidStack.GetBlock(tank.getFluid().fluidType);
+            LiquidBlock block = tank.getFluid().getFluid();
             if (tank.getFluid().isBright() && block != null)
                 return Block.BLOCKS_LIGHT_LUMINANCE[block.id];
         }
@@ -83,7 +83,10 @@ public class LavaTankEntity extends MultiServantEntity
     public void readCustomNBT (NbtCompound tags)
     {
         if (tags.getBoolean("hasFluid"))
-            tank.setFluid(new FluidStack(tags.getString("fluidName"), tags.getInt("amount")));
+        {
+            FluidStack fluidStack = new FluidStack(tags);
+            tank.setFluid(fluidStack);
+        }
         else
             tank.setFluid(null);
     }
@@ -93,10 +96,7 @@ public class LavaTankEntity extends MultiServantEntity
         FluidStack liquid = tank.getFluid();
         tags.putBoolean("hasFluid", liquid != null);
         if (liquid != null)
-        {
-            tags.putString("fluidName", liquid.getFluidName());
-            tags.putInt("amount", liquid.amount);
-        }
+            liquid.writeNbt(tags);
     }
 
     /* Updating */

@@ -1,7 +1,8 @@
 package io.github.yunivers.tconstruct.util;
 
+import io.github.yunivers.stationfluidapi.api.FluidStack;
+import net.minecraft.block.LiquidBlock;
 import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.block.material.FluidMaterial;
 import net.minecraft.nbt.NbtCompound;
 
 public class FluidTank
@@ -10,9 +11,9 @@ public class FluidTank
     protected int capacity;
     protected BlockEntity entity;
 
-    public FluidTank(FluidMaterial fluidType, int amount, int capacity)
+    public FluidTank(LiquidBlock fluid, int amount, int capacity)
     {
-        this(new FluidStack(fluidType, amount), capacity);
+        this(new FluidStack(fluid, amount), capacity);
     }
 
     public FluidTank(FluidStack stack, int capacity)
@@ -24,27 +25,6 @@ public class FluidTank
     public FluidTank(int capacity)
     {
         this.capacity = capacity;
-    }
-
-    public FluidTank readFromNBT(NbtCompound nbt)
-    {
-        if (!nbt.contains("Empty"))
-        {
-            FluidStack fluid = FluidStack.loadFluidStackFromNBT(nbt);
-            setFluid(fluid);
-        }
-        else
-            setFluid(null);
-        return this;
-    }
-
-    public NbtCompound writeToNBT(NbtCompound nbt)
-    {
-        if (fluid != null)
-            fluid.writeToNBT(nbt);
-        else
-            nbt.putString("Empty", "");
-        return nbt;
     }
 
     public void setFluid(FluidStack fluid)
@@ -101,7 +81,7 @@ public class FluidTank
 
         if (fluid == null)
         {
-            fluid = new FluidStack(resource, Math.min(capacity, resource.amount));
+            fluid = new FluidStack(resource.getFluid(), Math.min(capacity, resource.amount));
 
             /*if (entity != null)
             {
@@ -146,7 +126,7 @@ public class FluidTank
             drained = fluid.amount;
         }
 
-        FluidStack stack = new FluidStack(fluid, drained);
+        FluidStack stack = new FluidStack(fluid.getFluid(), drained);
         if (doDrain)
         {
             fluid.amount -= drained;

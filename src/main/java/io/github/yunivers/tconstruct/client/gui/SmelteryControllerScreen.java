@@ -1,9 +1,9 @@
 package io.github.yunivers.tconstruct.client.gui;
 
+import io.github.yunivers.stationfluidapi.api.FluidStack;
 import io.github.yunivers.tconstruct.blocks.entity.SmelteryEntity;
 import io.github.yunivers.tconstruct.inventory.SmelteryHandler;
 import io.github.yunivers.tconstruct.mixin.MinecraftAccessor;
-import io.github.yunivers.tconstruct.util.FluidStack;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.entity.player.PlayerInventory;

@@ -77,6 +77,9 @@ dependencies {
 	// transitiveImplementation tells babric loom that you want this dependency to be pulled into other mod's development workspaces. Best used ONLY for required dependencies.
 	modImplementation("net.modificationstation:StationAPI:${project.properties["stationapi_version"]}")
 
+	// Station Fluid API
+	modImplementation("io.github.yunivers:StationFluidAPI:${project.properties["stationfluidapi_version"]}")
+
 	// Extra mods.
 	// https://github.com/calmilamsy/glass-config-api
 	modImplementation("net.glasslauncher.mods:GlassConfigAPI:${project.properties["gcapi_version"]}")
