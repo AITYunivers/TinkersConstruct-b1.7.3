@@ -8,14 +8,19 @@ import net.minecraft.block.Block;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.ItemEntity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.BlockView;
 import net.minecraft.world.World;
+import net.modificationstation.stationapi.api.block.BlockState;
 import net.modificationstation.stationapi.api.gui.screen.container.GuiHelper;
+import net.modificationstation.stationapi.api.state.StateManager;
 import net.modificationstation.stationapi.api.template.block.BlockTemplate;
 import net.modificationstation.stationapi.api.template.block.TemplateBlockWithEntity;
 import net.modificationstation.stationapi.api.util.Identifier;
+import net.modificationstation.stationapi.api.util.math.Direction;
 
 import java.util.Random;
 
@@ -29,6 +34,19 @@ public class CraftingSlab extends TemplateBlockWithEntity {
 
         this.setBoundingBox(0.0F, 0.0F, 0.0F, 1.0F, 0.5F, 1.0F);
         this.setOpacity(255);
+    }
+
+    @Override
+    public void appendProperties(StateManager.Builder<Block, BlockState> builder) {
+        super.appendProperties(builder);
+        builder.add(CraftingStationBlock.FACING_PROPERTY);
+    }
+
+    public void updateBlockState(World world, int x, int y, int z, BlockState newState) {
+        BlockEntity entity = world.getBlockEntity(x, y, z);
+        world.setBlockState(x, y, z, newState);
+        entity.cancelRemoval();
+        world.setBlockEntity(x, y, z, entity);
     }
 
     @Override
@@ -83,6 +101,11 @@ public class CraftingSlab extends TemplateBlockWithEntity {
     }
 
     @Environment(EnvType.CLIENT)
+    public int getRenderType() {
+        return 16;
+    }
+
+    @Environment(EnvType.CLIENT)
     public boolean isSideVisible(BlockView blockView, int x, int y, int z, int side) {
         if (this != InitListener.craftingSlab) {
             super.isSideVisible(blockView, x, y, z, side);
@@ -97,6 +120,18 @@ public class CraftingSlab extends TemplateBlockWithEntity {
         } else {
             return blockView.getBlockId(x, y, z) != this.id;
         }
+    }
+
+    @Override
+    public void onPlaced(World world, int x, int y, int z, LivingEntity placer) {
+        int facing = MathHelper.floor((double)(placer.yaw * 4.0F / 360.0F) + (double)0.5F) & 3;
+        updateBlockState(world, x, y, z, getDefaultState().with(CraftingStationBlock.FACING_PROPERTY,
+                switch(facing) {
+                    case 0 -> Direction.NORTH;
+                    case 1 -> Direction.EAST;
+                    case 2 -> Direction.SOUTH;
+                    default -> Direction.WEST;
+                }));
     }
 
     @Override

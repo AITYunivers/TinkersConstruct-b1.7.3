@@ -85,6 +85,11 @@ public class FurnaceSlab extends FurnaceBlock implements BlockTemplate
     }
 
     @Environment(EnvType.CLIENT)
+    public int getRenderType() {
+        return 16;
+    }
+
+    @Environment(EnvType.CLIENT)
     public boolean isSideVisible(BlockView blockView, int x, int y, int z, int side) {
         if (this != InitListener.craftingSlab) {
             super.isSideVisible(blockView, x, y, z, side);

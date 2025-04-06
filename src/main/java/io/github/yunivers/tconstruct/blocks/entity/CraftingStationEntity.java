@@ -2,6 +2,7 @@ package io.github.yunivers.tconstruct.blocks.entity;
 
 import io.github.yunivers.tconstruct.inventory.CraftingStationHandler;
 import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.CraftingInventory;
@@ -27,6 +28,7 @@ public class CraftingStationEntity extends BlockEntity implements Inventory
     public ItemStack[] stacks;
     public CraftingResultInventory result;
     public ScreenHandler handler;
+    public ItemEntity[] renderedItems;
 
     public CraftingStationEntity()
     {
